@@ -75,13 +75,13 @@ While Course 1 laid the mathematical foundations of forward and backward propaga
        $$dW^{[l]} = dW^{[l]}_{orig} + \frac{\lambda}{m} W^{[l]}$$
      - *Result*: **Train: 93.8%** | **Test: 93.0%** ($\lambda = 0.7$). Smooths the boundary and prevents any single feature from dominating.
   3. **Inverted Dropout**:
-     - Randomly deactivates neurons during forward propagation with probability $(1 - \text{keep\_prob})$.
+     - Randomly deactivates neurons during forward propagation with probability $(1 - p)$ (where $p = \text{keep probability}$, e.g. `keep_prob = 0.86`).
      - Forward mask & scaling:
-       $$D^{[l]} = (\text{random} < \text{keep\_prob}), \quad A^{[l]} = \frac{A^{[l]} * D^{[l]}}{\text{keep\_prob}}$$
-       *Note: Dividing by $\text{keep\_prob}$ preserves the expected value $\mathbb{E}[A^{[l]}]$ during training, eliminating the need to rescale weights at test time.*
+       $$D^{[l]} = (\text{random} < p), \quad A^{[l]} = \frac{A^{[l]} * D^{[l]}}{p}$$
+       *Note: Dividing by $p$ preserves the expected value $\mathbb{E}[A^{[l]}]$ during training, eliminating the need to rescale weights at test time.*
      - Backpropagation mask:
-       $$dA^{[l]} = \frac{dA^{[l]} * D^{[l]}}{\text{keep\_prob}}$$
-     - *Result*: **Train: 92.9%** | **Test: 95.0%** ($\text{keep\_prob} = 0.86$). Highest generalization score on unseen data.
+       $$dA^{[l]} = \frac{dA^{[l]} * D^{[l]}}{p}$$
+     - *Result*: **Train: 92.9%** | **Test: 95.0%** (`keep_prob = 0.86`). Highest generalization score on unseen data.
 
 ---
 
@@ -92,13 +92,17 @@ While Course 1 laid the mathematical foundations of forward and backward propaga
 ![1D Gradient Checking](Week1/W1A3/images/1Dgrad_kiank.png)
 
 * **Formulation**:
-  $$\text{gradapprox}[i] = \frac{\mathcal{J}(\theta_1, \dots, \theta_i + \varepsilon, \dots) - \mathcal{J}(\theta_1, \dots, \theta_i - \varepsilon, \dots)}{2 \varepsilon}$$
-  $$\text{difference} = \frac{\|\text{grad} - \text{gradapprox}\|_2}{\|\text{grad}\|_2 + \|\text{gradapprox}\|_2}$$
+  - Two-sided finite difference approximation:
+    $$\text{gradapprox}[i] = \frac{\mathcal{J}(\theta_1, \dots, \theta_i + \varepsilon, \dots) - \mathcal{J}(\theta_1, \dots, \theta_i - \varepsilon, \dots)}{2 \varepsilon}$$
+
+  - Relative Euclidean difference criterion:
+    $$\text{difference} = \frac{\|\text{grad} - \text{gradapprox}\|_2}{\|\text{grad}\|_2 + \|\text{gradapprox}\|_2}$$
+
 * **Key Steps**:
   - Reshaped and unrolled all parameter matrices $\{W^{[1]}, b^{[1]}, \dots, W^{[L]}, b^{[L]}\}$ into a single 1D vector $\theta$ via `dictionary_to_vector`.
   - **1D Verification**: Validated on single-variable model with $\varepsilon = 10^{-7} \implies \text{difference} \approx 7.81 \times 10^{-11} < 10^{-7}$ (Confirmed analytical correctness).
   - **N-D Verification**: Unrolled deep network parameters and used gradient checking to catch intentionally seeded bugs in backpropagation (flagged difference of $0.285 > 10^{-7}$).
-  - *Engineering Note*: Gradient checking is computationally expensive ($\mathcal{O}(2 \times \text{num\_params})$ forward passes) and is used strictly for unit testing and debugging, never during training.
+  - *Engineering Note*: Gradient checking is computationally expensive ($\mathcal{O}(2 \times \dim(\theta))$ forward passes) and is used strictly for unit testing and debugging, never during training.
 
 ---
 
@@ -129,7 +133,8 @@ While Course 1 laid the mathematical foundations of forward and backward propaga
        $$W^{[l]} := W^{[l]} - \alpha \frac{v^{\text{corrected}}_{dW^{[l]}}}{\sqrt{s^{\text{corrected}}_{dW^{[l]}}} + \varepsilon}$$
      - Hyperparameters: $\beta_1 = 0.9, \beta_2 = 0.999, \varepsilon = 10^{-8}$.
   4. **Learning Rate Decay & Scheduling**:
-     - Iteration-based decay: $\alpha = \frac{1}{1 + \text{decay\_rate} \times \text{epoch\_num}} \alpha_0$.
+     - Iteration-based decay:
+       $$\alpha = \frac{\alpha_0}{1 + \text{decay rate} \times \text{epoch}}$$
      - Fixed interval schedule: Decay $\alpha$ every $K$ epochs by a fixed factor.
      - Prevents oscillation around the minimum, allowing models to settle into sharper loss basins.
 
@@ -214,8 +219,8 @@ $$\mathcal{J}_{\text{reg}} = \mathcal{J} + \frac{\lambda}{2m} \sum_{l=1}^L \|W^{
 *Shrinks weights towards zero at each update step: $W := W\left(1 - \frac{\alpha \lambda}{m}\right) - \alpha \, dW$.*
 
 ### 3. Inverted Dropout
-$$D^{[l]} = \text{Bernoulli}(\text{keep\_prob}), \qquad A^{[l]} = \frac{A^{[l]} \odot D^{[l]}}{\text{keep\_prob}}$$
-*Scale during training so that test-time evaluation requires no modifications: $A^{[l]}_{\text{test}} = g(Z^{[l]})$.*
+$$D^{[l]} = \text{Bernoulli}(p), \qquad A^{[l]} = \frac{A^{[l]} \odot D^{[l]}}{p}$$
+*Scale during training with keep probability $p$ (`keep_prob`) so that test-time evaluation requires no modifications: $A^{[l]}_{\text{test}} = g(Z^{[l]})$.*
 
 ### 4. Adam Optimizer Updates
 $$v_t = \beta_1 v_{t-1} + (1 - \beta_1) g_t, \qquad s_t = \beta_2 s_{t-1} + (1 - \beta_2) g_t^2$$
