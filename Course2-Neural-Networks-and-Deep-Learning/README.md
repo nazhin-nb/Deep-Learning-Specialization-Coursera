@@ -115,14 +115,14 @@ While Course 1 laid the mathematical foundations of forward and backward propaga
      - Significantly speeds up training compared to Batch GD on large datasets.
   2. **Gradient Descent with Momentum**:
      - Computes an exponentially weighted average of past gradients to dampen orthogonal oscillations:
-       - **Velocity updates**: $v_{dW^{[l]}} = \beta \, v_{dW^{[l]}} + (1 - \beta) \, dW^{[l]}, \quad v_{db^{[l]}} = \beta \, v_{db^{[l]}} + (1 - \beta) \, db^{[l]}$
-       - **Parameter updates**: $W^{[l]} := W^{[l]} - \alpha \, v_{dW^{[l]}}, \quad b^{[l]} := b^{[l]} - \alpha \, v_{db^{[l]}}$
+       - **Velocity updates**: $v_{dW} = \beta v_{dW} + (1 - \beta) dW$ and $v_{db} = \beta v_{db} + (1 - \beta) db$
+       - **Parameter updates**: $W := W - \alpha v_{dW}$ and $b := b - \alpha v_{db}$
      - Hyperparameter $\beta = 0.9$ (averaging over roughly $\approx \frac{1}{1-\beta} = 10$ past steps).
   3. **Adam (Adaptive Moment Estimation)**:
      - Unifies **Momentum** (first moment vector $v$) and **RMSprop** (second raw moment vector $s$) with bias correction:
-       - **Moving averages**: $v_{dW^{[l]}} = \beta_1 v_{dW^{[l]}} + (1 - \beta_1) dW^{[l]}, \quad s_{dW^{[l]}} = \beta_2 s_{dW^{[l]}} + (1 - \beta_2) (dW^{[l]})^2$
-       - **Bias-corrected estimates**: $v^{\text{corr}}_{dW^{[l]}} = \frac{v_{dW^{[l]}}}{1 - (\beta_1)^t}, \quad s^{\text{corr}}_{dW^{[l]}} = \frac{s_{dW^{[l]}}}{1 - (\beta_2)^t}$
-       - **Parameter update rule**: $W^{[l]} := W^{[l]} - \alpha \frac{v^{\text{corr}}_{dW^{[l]}}}{\sqrt{s^{\text{corr}}_{dW^{[l]}}} + \varepsilon}$
+       - **Moving averages**: $v_{dW} = \beta_1 v_{dW} + (1 - \beta_1) dW$ and $s_{dW} = \beta_2 s_{dW} + (1 - \beta_2) dW^2$
+       - **Bias-corrected estimates**: $v^{\text{corr}} = \frac{v_{dW}}{1 - \beta_1^t}$ and $s^{\text{corr}} = \frac{s_{dW}}{1 - \beta_2^t}$
+       - **Parameter update rule**: $W := W - \alpha \frac{v^{\text{corr}}}{\sqrt{s^{\text{corr}}} + \varepsilon}$
      - Hyperparameters: $\beta_1 = 0.9, \beta_2 = 0.999, \varepsilon = 10^{-8}$.
   4. **Learning Rate Decay & Scheduling**:
      - **Iteration-based decay**: $\alpha = \frac{\alpha_0}{1 + (\text{decay rate}) \times \text{epoch}}$
