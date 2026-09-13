@@ -65,19 +65,42 @@ While Course 1 laid the mathematical foundations of forward and backward propaga
 ![Football Field Problem](Week1/W1A2/images/field_kiank.png)
 
 * **Evaluated Techniques**:
-  1. **Baseline (Non-regularized)**:
-     - Standard cross-entropy loss without penalties.
-     - *Result*: **Train: 94.8%** | **Test: 91.5%** — Overfits noisy training samples, producing fragmented decision boundaries.
-  2. **$L_2$ Regularization (Frobenius Norm / Weight Decay)**:
-     - **Cost function penalty**: $\mathcal{J}_{\text{reg}} = \mathcal{J} + \frac{\lambda}{2m} \sum_{l=1}^{L} \|W^{[l]}\|_F^2 = \mathcal{J} + \frac{\lambda}{2m} \sum_{l=1}^{L} \sum_{i} \sum_{j} (W_{i,j}^{[l]})^2$
-     - **Analytical gradient adjustment**: $dW^{[l]} = dW^{[l]}_{\text{orig}} + \frac{\lambda}{m} W^{[l]}$
-     - *Result*: **Train: 93.8%** | **Test: 93.0%** ($\lambda = 0.7$). Smooths the boundary and prevents any single feature from dominating.
-  3. **Inverted Dropout**:
-     - Randomly deactivates neurons during forward propagation with keep probability $p$ (`keep_prob = 0.86`).
-     - **Forward mask & scaling**: $D^{[l]} = (\text{random} < p), \quad A^{[l]} = \frac{A^{[l]} \odot D^{[l]}}{p}$
-     - *Note*: Dividing by $p$ preserves the expected value $\mathbb{E}[A^{[l]}]$ during training, eliminating the need to rescale weights at test time.
-     - **Backpropagation mask**: $dA^{[l]} = \frac{dA^{[l]} \odot D^{[l]}}{p}$
-     - *Result*: **Train: 92.9%** | **Test: 95.0%** (`keep_prob = 0.86`). Highest generalization score on unseen data.
+
+**1. Baseline (Non-regularized)**:
+- Standard cross-entropy loss without penalties.
+- *Result*: **Train: 94.8%** | **Test: 91.5%** — Overfits noisy training samples, producing fragmented decision boundaries.
+
+**2. $L_2$ Regularization (Frobenius Norm / Weight Decay)**:
+- Adds a penalty proportional to the sum of squared weights to the cost function:
+
+$$
+\mathcal{J}_{\text{reg}} = \mathcal{J} + \frac{\lambda}{2m} \sum_{l=1}^{L} \|W^{[l]}\|_F^2
+$$
+
+- Analytical gradient adjustment:
+
+$$
+dW^{[l]} = dW^{[l]} + \frac{\lambda}{m} W^{[l]}
+$$
+
+- *Result*: **Train: 93.8%** | **Test: 93.0%** ($\lambda = 0.7$). Smooths the boundary and prevents any single feature from dominating.
+
+**3. Inverted Dropout**:
+- Randomly deactivates neurons during forward propagation with keep probability $p$ (`keep_prob = 0.86`).
+- Forward mask and inverted scaling:
+
+$$
+D^{[l]} = (\text{random} < p), \qquad A^{[l]} = \frac{A^{[l]} \odot D^{[l]}}{p}
+$$
+
+- *Note*: Dividing by $p$ preserves the expected value $\mathbb{E}[A^{[l]}]$ during training, eliminating the need to rescale weights at test time.
+- Backpropagation mask:
+
+$$
+dA^{[l]} = \frac{dA^{[l]} \odot D^{[l]}}{p}
+$$
+
+- *Result*: **Train: 92.9%** | **Test: 95.0%** (`keep_prob = 0.86`). Highest generalization score on unseen data.
 
 ---
 
@@ -88,14 +111,20 @@ While Course 1 laid the mathematical foundations of forward and backward propaga
 ![1D Gradient Checking](Week1/W1A3/images/1Dgrad_kiank.png)
 
 * **Formulation**:
-  - **Two-sided finite difference approximation**: $\text{gradapprox}[i] = \frac{\mathcal{J}(\theta_1, \dots, \theta_i + \varepsilon, \dots) - \mathcal{J}(\theta_1, \dots, \theta_i - \varepsilon, \dots)}{2 \varepsilon}$
-  - **Relative Euclidean difference criterion**: $\text{difference} = \frac{\|\text{grad} - \text{gradapprox}\|_2}{\|\text{grad}\|_2 + \|\text{gradapprox}\|_2}$
+
+$$
+\text{gradapprox}[i] = \frac{\mathcal{J}(\theta_1, \dots, \theta_i + \varepsilon, \dots) - \mathcal{J}(\theta_1, \dots, \theta_i - \varepsilon, \dots)}{2 \varepsilon}
+$$
+
+$$
+\text{difference} = \frac{\|\text{grad} - \text{gradapprox}\|_2}{\|\text{grad}\|_2 + \|\text{gradapprox}\|_2}
+$$
 
 * **Key Steps**:
-  - Reshaped and unrolled all parameter matrices $\{W^{[1]}, b^{[1]}, \dots, W^{[L]}, b^{[L]}\}$ into a single 1D vector $\theta$ via `dictionary_to_vector`.
-  - **1D Verification**: Validated on single-variable model with $\varepsilon = 10^{-7} \implies \text{difference} \approx 7.81 \times 10^{-11} < 10^{-7}$ (Confirmed analytical correctness).
-  - **N-D Verification**: Unrolled deep network parameters and used gradient checking to catch intentionally seeded bugs in backpropagation (flagged difference of $0.285 > 10^{-7}$).
-  - *Engineering Note*: Gradient checking is computationally expensive ($\mathcal{O}(2 \times \dim(\theta))$ forward passes) and is used strictly for unit testing and debugging, never during training.
+- Reshaped and unrolled all parameter matrices $\{W^{[1]}, b^{[1]}, \dots, W^{[L]}, b^{[L]}\}$ into a single 1D vector $\theta$ via `dictionary_to_vector`.
+- **1D Verification**: Validated on single-variable model with $\varepsilon = 10^{-7} \implies \text{difference} \approx 7.81 \times 10^{-11} < 10^{-7}$ (Confirmed analytical correctness).
+- **N-D Verification**: Unrolled deep network parameters and used gradient checking to catch intentionally seeded bugs in backpropagation (flagged difference of $0.285 > 10^{-7}$).
+- *Engineering Note*: Gradient checking is computationally expensive ($\mathcal{O}(2 \times \dim(\theta))$ forward passes) and is used strictly for unit testing and debugging, never during training.
 
 ---
 
@@ -108,26 +137,50 @@ While Course 1 laid the mathematical foundations of forward and backward propaga
 ![Optimization Comparison](Week2/W2A1/images/opt_momentum.png)
 
 * **Implemented Optimizers**:
-  1. **Mini-Batch Gradient Descent**:
-     - Implemented `random_mini_batches(X, Y, mini_batch_size)`:
-       - **Shuffle**: Synchronously permutes $(X, Y)$ along columns.
-       - **Partition**: Splits data into chunks of size $64$, handling the final remainder batch $(\text{size} < 64)$.
-     - Significantly speeds up training compared to Batch GD on large datasets.
-  2. **Gradient Descent with Momentum**:
-     - Computes an exponentially weighted average of past gradients to dampen orthogonal oscillations:
-       - **Velocity updates**: $v_{dW} = \beta v_{dW} + (1 - \beta) dW$ and $v_{db} = \beta v_{db} + (1 - \beta) db$
-       - **Parameter updates**: $W := W - \alpha v_{dW}$ and $b := b - \alpha v_{db}$
-     - Hyperparameter $\beta = 0.9$ (averaging over roughly $\approx \frac{1}{1-\beta} = 10$ past steps).
-  3. **Adam (Adaptive Moment Estimation)**:
-     - Unifies **Momentum** (first moment vector $v$) and **RMSprop** (second raw moment vector $s$) with bias correction:
-       - **Moving averages**: $v_{dW} = \beta_1 v_{dW} + (1 - \beta_1) dW$ and $s_{dW} = \beta_2 s_{dW} + (1 - \beta_2) dW^2$
-       - **Bias-corrected estimates**: $v^{\text{corr}} = \frac{v_{dW}}{1 - \beta_1^t}$ and $s^{\text{corr}} = \frac{s_{dW}}{1 - \beta_2^t}$
-       - **Parameter update rule**: $W := W - \alpha \frac{v^{\text{corr}}}{\sqrt{s^{\text{corr}}} + \varepsilon}$
-     - Hyperparameters: $\beta_1 = 0.9, \beta_2 = 0.999, \varepsilon = 10^{-8}$.
-  4. **Learning Rate Decay & Scheduling**:
-     - **Iteration-based decay**: $\alpha = \frac{\alpha_0}{1 + (\text{decay rate}) \times \text{epoch}}$
-     - **Fixed interval schedule**: Decay $\alpha$ every $K$ epochs by a fixed factor.
-     - Prevents oscillation around the minimum, allowing models to settle into sharper loss basins.
+
+**1. Mini-Batch Gradient Descent**:
+- Implemented `random_mini_batches(X, Y, mini_batch_size)`:
+  - **Shuffle**: Synchronously permutes $(X, Y)$ along columns.
+  - **Partition**: Splits data into chunks of size 64, handling the final remainder batch $(\text{size} < 64)$.
+- Significantly speeds up training compared to Batch GD on large datasets.
+
+**2. Gradient Descent with Momentum**:
+- Computes an exponentially weighted average of past gradients to dampen orthogonal oscillations ($\beta = 0.9$):
+
+$$
+v_{dW} = \beta v_{dW} + (1 - \beta) dW, \qquad v_{db} = \beta v_{db} + (1 - \beta) db
+$$
+
+$$
+W := W - \alpha v_{dW}, \qquad b := b - \alpha v_{db}
+$$
+
+**3. Adam (Adaptive Moment Estimation)**:
+- Unifies **Momentum** (first moment vector $v$) and **RMSprop** (second raw moment vector $s$) with bias correction:
+
+$$
+v = \beta_1 v + (1 - \beta_1) dW, \qquad s = \beta_2 s + (1 - \beta_2) dW^2
+$$
+
+$$
+v^{\text{corrected}} = \frac{v}{1 - \beta_1^t}, \qquad s^{\text{corrected}} = \frac{s}{1 - \beta_2^t}
+$$
+
+$$
+W := W - \alpha \frac{v^{\text{corrected}}}{\sqrt{s^{\text{corrected}}} + \varepsilon}
+$$
+
+- Hyperparameters: $\beta_1 = 0.9$, $\beta_2 = 0.999$, $\varepsilon = 10^{-8}$.
+
+**4. Learning Rate Decay & Scheduling**:
+- **Iteration-based decay**:
+
+$$
+\alpha = \frac{\alpha_0}{1 + (\text{decay rate}) \times \text{epoch}}
+$$
+
+- **Fixed interval schedule**: Decay $\alpha$ every $K$ epochs by a fixed factor.
+- Prevents oscillation around the minimum, allowing models to settle into sharper loss basins.
 
 ---
 
