@@ -45,7 +45,7 @@ While Course 1 laid the mathematical foundations of forward and backward propaga
 * **Comparative Implementations**:
   1. **Zero Initialization** (`zeros`):
      - $W^{[l]} = 0, \quad b^{[l]} = 0$.
-     - *Flaw*: Fails to break symmetry. Every neuron in layer $l$ computes identical activations ($a^{[l]} = g(0)$) and receives identical gradients during backpropagation. The network behaves as a simple linear classifier.
+     - *Flaw*: Fails to break symmetry. Every neuron in layer $l$ computes identical activations ( $a^{[l]} = g(0)$ ) and receives identical gradients during backpropagation. The network behaves as a simple linear classifier.
      - *Result*: **Train: 50.0%** | **Test: 50.0%** | Cost remains flat at $0.693$.
   2. **Large Random Initialization** (`random`):
      - $W^{[l]} \sim \mathcal{N}(0, 1) \times 10$.
