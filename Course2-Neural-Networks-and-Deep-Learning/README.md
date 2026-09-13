@@ -69,18 +69,14 @@ While Course 1 laid the mathematical foundations of forward and backward propaga
      - Standard cross-entropy loss without penalties.
      - *Result*: **Train: 94.8%** | **Test: 91.5%** — Overfits noisy training samples, producing fragmented decision boundaries.
   2. **$L_2$ Regularization (Frobenius Norm / Weight Decay)**:
-     - Penalizes large weight values in the cost function:
-       $$\mathcal{J}_{reg} = \mathcal{J} + \frac{\lambda}{2m} \sum_{l=1}^{L} \|W^{[l]}\|_F^2 = \mathcal{J} + \frac{\lambda}{2m} \sum_{l=1}^{L} \sum_{i} \sum_{j} (W_{i,j}^{[l]})^2$$
-     - Analytical gradient adjustment:
-       $$dW^{[l]} = dW^{[l]}_{orig} + \frac{\lambda}{m} W^{[l]}$$
+     - **Cost function penalty**: $\mathcal{J}_{\text{reg}} = \mathcal{J} + \frac{\lambda}{2m} \sum_{l=1}^{L} \|W^{[l]}\|_F^2 = \mathcal{J} + \frac{\lambda}{2m} \sum_{l=1}^{L} \sum_{i} \sum_{j} (W_{i,j}^{[l]})^2$
+     - **Analytical gradient adjustment**: $dW^{[l]} = dW^{[l]}_{\text{orig}} + \frac{\lambda}{m} W^{[l]}$
      - *Result*: **Train: 93.8%** | **Test: 93.0%** ($\lambda = 0.7$). Smooths the boundary and prevents any single feature from dominating.
   3. **Inverted Dropout**:
-     - Randomly deactivates neurons during forward propagation with probability $(1 - p)$ (where $p = \text{keep probability}$, e.g. `keep_prob = 0.86`).
-     - Forward mask & scaling:
-       $$D^{[l]} = (\text{random} < p), \quad A^{[l]} = \frac{A^{[l]} * D^{[l]}}{p}$$
-       *Note: Dividing by $p$ preserves the expected value $\mathbb{E}[A^{[l]}]$ during training, eliminating the need to rescale weights at test time.*
-     - Backpropagation mask:
-       $$dA^{[l]} = \frac{dA^{[l]} * D^{[l]}}{p}$$
+     - Randomly deactivates neurons during forward propagation with keep probability $p$ (`keep_prob = 0.86`).
+     - **Forward mask & scaling**: $D^{[l]} = (\text{random} < p), \quad A^{[l]} = \frac{A^{[l]} \odot D^{[l]}}{p}$
+     - *Note*: Dividing by $p$ preserves the expected value $\mathbb{E}[A^{[l]}]$ during training, eliminating the need to rescale weights at test time.
+     - **Backpropagation mask**: $dA^{[l]} = \frac{dA^{[l]} \odot D^{[l]}}{p}$
      - *Result*: **Train: 92.9%** | **Test: 95.0%** (`keep_prob = 0.86`). Highest generalization score on unseen data.
 
 ---
@@ -92,11 +88,8 @@ While Course 1 laid the mathematical foundations of forward and backward propaga
 ![1D Gradient Checking](Week1/W1A3/images/1Dgrad_kiank.png)
 
 * **Formulation**:
-  - Two-sided finite difference approximation:
-    $$\text{gradapprox}[i] = \frac{\mathcal{J}(\theta_1, \dots, \theta_i + \varepsilon, \dots) - \mathcal{J}(\theta_1, \dots, \theta_i - \varepsilon, \dots)}{2 \varepsilon}$$
-
-  - Relative Euclidean difference criterion:
-    $$\text{difference} = \frac{\|\text{grad} - \text{gradapprox}\|_2}{\|\text{grad}\|_2 + \|\text{gradapprox}\|_2}$$
+  - **Two-sided finite difference approximation**: $\text{gradapprox}[i] = \frac{\mathcal{J}(\theta_1, \dots, \theta_i + \varepsilon, \dots) - \mathcal{J}(\theta_1, \dots, \theta_i - \varepsilon, \dots)}{2 \varepsilon}$
+  - **Relative Euclidean difference criterion**: $\text{difference} = \frac{\|\text{grad} - \text{gradapprox}\|_2}{\|\text{grad}\|_2 + \|\text{gradapprox}\|_2}$
 
 * **Key Steps**:
   - Reshaped and unrolled all parameter matrices $\{W^{[1]}, b^{[1]}, \dots, W^{[L]}, b^{[L]}\}$ into a single 1D vector $\theta$ via `dictionary_to_vector`.
@@ -117,25 +110,23 @@ While Course 1 laid the mathematical foundations of forward and backward propaga
 * **Implemented Optimizers**:
   1. **Mini-Batch Gradient Descent**:
      - Implemented `random_mini_batches(X, Y, mini_batch_size)`:
-       1. **Shuffle**: Synchronously permutes $(X, Y)$ along columns.
-       2. **Partition**: Splits data into chunks of size $64$, handling the final remainder batch $(\text{size} < 64)$.
+       - **Shuffle**: Synchronously permutes $(X, Y)$ along columns.
+       - **Partition**: Splits data into chunks of size $64$, handling the final remainder batch $(\text{size} < 64)$.
      - Significantly speeds up training compared to Batch GD on large datasets.
   2. **Gradient Descent with Momentum**:
      - Computes an exponentially weighted average of past gradients to dampen orthogonal oscillations:
-       $$v_{dW^{[l]}} = \beta \, v_{dW^{[l]}} + (1 - \beta) \, dW^{[l]}$$
-       $$v_{db^{[l]}} = \beta \, v_{db^{[l]}} + (1 - \beta) \, db^{[l]}$$
-       $$W^{[l]} := W^{[l]} - \alpha \, v_{dW^{[l]}}, \quad b^{[l]} := b^{[l]} - \alpha \, v_{db^{[l]}}$$
+       - **Velocity updates**: $v_{dW^{[l]}} = \beta \, v_{dW^{[l]}} + (1 - \beta) \, dW^{[l]}, \quad v_{db^{[l]}} = \beta \, v_{db^{[l]}} + (1 - \beta) \, db^{[l]}$
+       - **Parameter updates**: $W^{[l]} := W^{[l]} - \alpha \, v_{dW^{[l]}}, \quad b^{[l]} := b^{[l]} - \alpha \, v_{db^{[l]}}$
      - Hyperparameter $\beta = 0.9$ (averaging over roughly $\approx \frac{1}{1-\beta} = 10$ past steps).
   3. **Adam (Adaptive Moment Estimation)**:
      - Unifies **Momentum** (first moment vector $v$) and **RMSprop** (second raw moment vector $s$) with bias correction:
-       $$v_{dW^{[l]}} = \beta_1 v_{dW^{[l]}} + (1 - \beta_1) dW^{[l]}, \quad s_{dW^{[l]}} = \beta_2 s_{dW^{[l]}} + (1 - \beta_2) (dW^{[l]})^2$$
-       $$v^{\text{corrected}}_{dW^{[l]}} = \frac{v_{dW^{[l]}}}{1 - (\beta_1)^t}, \quad s^{\text{corrected}}_{dW^{[l]}} = \frac{s_{dW^{[l]}}}{1 - (\beta_2)^t}$$
-       $$W^{[l]} := W^{[l]} - \alpha \frac{v^{\text{corrected}}_{dW^{[l]}}}{\sqrt{s^{\text{corrected}}_{dW^{[l]}}} + \varepsilon}$$
+       - **Moving averages**: $v_{dW^{[l]}} = \beta_1 v_{dW^{[l]}} + (1 - \beta_1) dW^{[l]}, \quad s_{dW^{[l]}} = \beta_2 s_{dW^{[l]}} + (1 - \beta_2) (dW^{[l]})^2$
+       - **Bias-corrected estimates**: $v^{\text{corr}}_{dW^{[l]}} = \frac{v_{dW^{[l]}}}{1 - (\beta_1)^t}, \quad s^{\text{corr}}_{dW^{[l]}} = \frac{s_{dW^{[l]}}}{1 - (\beta_2)^t}$
+       - **Parameter update rule**: $W^{[l]} := W^{[l]} - \alpha \frac{v^{\text{corr}}_{dW^{[l]}}}{\sqrt{s^{\text{corr}}_{dW^{[l]}}} + \varepsilon}$
      - Hyperparameters: $\beta_1 = 0.9, \beta_2 = 0.999, \varepsilon = 10^{-8}$.
   4. **Learning Rate Decay & Scheduling**:
-     - Iteration-based decay:
-       $$\alpha = \frac{\alpha_0}{1 + \text{decay rate} \times \text{epoch}}$$
-     - Fixed interval schedule: Decay $\alpha$ every $K$ epochs by a fixed factor.
+     - **Iteration-based decay**: $\alpha = \frac{\alpha_0}{1 + (\text{decay rate}) \times \text{epoch}}$
+     - **Fixed interval schedule**: Decay $\alpha$ every $K$ epochs by a fixed factor.
      - Prevents oscillation around the minimum, allowing models to settle into sharper loss basins.
 
 ---
@@ -211,21 +202,42 @@ While Course 1 laid the mathematical foundations of forward and backward propaga
 ## 📐 Optimization & Regularization Cheatsheet
 
 ### 1. He Weight Initialization
-$$W^{[l]} \sim \mathcal{N}\left(0, \, \sqrt{\frac{2}{n^{[l-1]}}}\right)$$
+
+$$
+W^{[l]} \sim \mathcal{N}\left(0, \, \sqrt{\frac{2}{n^{[l-1]}}}\right)
+$$
+
 *Use for ReLU activations to maintain variance $\text{Var}(a^{[l]}) \approx \text{Var}(a^{[l-1]})$. For $\tanh$, use Xavier/Glorot: $\sqrt{1 / n^{[l-1]}}$.*
 
 ### 2. $L_2$ Regularization (Weight Decay)
-$$\mathcal{J}_{\text{reg}} = \mathcal{J} + \frac{\lambda}{2m} \sum_{l=1}^L \|W^{[l]}\|_F^2, \qquad dW^{[l]} = dW^{[l]} + \frac{\lambda}{m} W^{[l]}$$
+
+$$
+\mathcal{J}_{\text{reg}} = \mathcal{J} + \frac{\lambda}{2m} \sum_{l=1}^L \|W^{[l]}\|_F^2, \qquad dW^{[l]} = dW^{[l]} + \frac{\lambda}{m} W^{[l]}
+$$
+
 *Shrinks weights towards zero at each update step: $W := W\left(1 - \frac{\alpha \lambda}{m}\right) - \alpha \, dW$.*
 
 ### 3. Inverted Dropout
-$$D^{[l]} = \text{Bernoulli}(p), \qquad A^{[l]} = \frac{A^{[l]} \odot D^{[l]}}{p}$$
+
+$$
+D^{[l]} = \text{Bernoulli}(p), \qquad A^{[l]} = \frac{A^{[l]} \odot D^{[l]}}{p}
+$$
+
 *Scale during training with keep probability $p$ (`keep_prob`) so that test-time evaluation requires no modifications: $A^{[l]}_{\text{test}} = g(Z^{[l]})$.*
 
 ### 4. Adam Optimizer Updates
-$$v_t = \beta_1 v_{t-1} + (1 - \beta_1) g_t, \qquad s_t = \beta_2 s_{t-1} + (1 - \beta_2) g_t^2$$
-$$\hat{v}_t = \frac{v_t}{1 - \beta_1^t}, \qquad \hat{s}_t = \frac{s_t}{1 - \beta_2^t}$$
-$$\theta_t = \theta_{t-1} - \frac{\alpha}{\sqrt{\hat{s}_t} + \varepsilon} \hat{v}_t$$
+
+$$
+v_t = \beta_1 v_{t-1} + (1 - \beta_1) g_t, \qquad s_t = \beta_2 s_{t-1} + (1 - \beta_2) g_t^2
+$$
+
+$$
+\hat{v}_t = \frac{v_t}{1 - \beta_1^t}, \qquad \hat{s}_t = \frac{s_t}{1 - \beta_2^t}
+$$
+
+$$
+\theta_t = \theta_{t-1} - \frac{\alpha}{\sqrt{\hat{s}_t} + \varepsilon} \hat{v}_t
+$$
 
 ---
 
